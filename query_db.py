@@ -5,6 +5,20 @@ import json
 from lxml import etree
 import argparse
 
+
+def connect_db():
+    load_dotenv()
+    conn = psycopg2.connect(
+        host = os.getenv("PG_HOST"),
+        port = os.getenv("PG_PORT"),
+        database = os.getenv("PG_DB"),
+        user = os.getenv("PG_USER"),
+        password = os.getenv("PG_PASSWORD")
+    )
+    cur = conn.cursor()
+    
+    return conn, cur
+
 def drop_tables(conn, cur):
     #We need it so that drop tables work 
     conn.autocommit = True 
@@ -99,37 +113,13 @@ def get_queries(folder_path):
         queries[filename] = content
     return queries  
 
-def main():
-    #CLI
-    parser = argparse.ArgumentParser()
-    
-    parser.add_argument("--students", required=True)
-    parser.add_argument("--rooms", required=True)
-    parser.add_argument("--format", required=True, choices=["json", "xml"])
-    
-    args = parser.parse_args()
-    
-    student_path = args.students
-    rooms_path = args.rooms
-    format = args.format
-    
-    #Set connection to DB
-    load_dotenv()
-    conn = psycopg2.connect(
-        host = os.getenv("PG_HOST"),
-        port = os.getenv("PG_PORT"),
-        database = os.getenv("PG_DB"),
-        user = os.getenv("PG_USER"),
-        password = os.getenv("PG_PASSWORD")
-    )
-    cur = conn.cursor()
-    
-    #Create tables and load data from json to them
+def fill_db(conn, cur,rooms_path, student_path):
     drop_tables(conn, cur)
     create_tables(cur)
     rows_rooms, rows_students = extract_from_json(rooms_path, student_path)
     load_to_db(rows_rooms, rows_students, cur)
-
+    
+def query_db(cur, format):
     #Create indices 
     create_indices(cur)
     
@@ -147,6 +137,29 @@ def main():
         else:
             load_to_xml(data, name, "record")
             print(f"Loaded data to output/{name}.xml")
+       
+def main():
+    #CLI
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument("--students", required=True)
+    parser.add_argument("--rooms", required=True)
+    parser.add_argument("--format", required=True, choices=["json", "xml"])
+    
+    args = parser.parse_args()
+    
+    student_path = args.students
+    rooms_path = args.rooms
+    format = args.format
+    
+    #Set connection to DB
+    conn, cur = connect_db()
+    
+    #Create tables and load data from json to them
+    fill_db(conn, cur, rooms_path, student_path)
+
+    #Query DB and and save results
+    query_db(cur, format)
     
     #Close connection to DB
     cur.close()

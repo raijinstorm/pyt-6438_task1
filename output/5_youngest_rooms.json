@@ -1,0 +1,32 @@
+[
+  {
+    "id": 661,
+    "name": "Room #661",
+    "count": 3,
+    "Avg_age": "12.19"
+  },
+  {
+    "id": 913,
+    "name": "Room #913",
+    "count": 3,
+    "Avg_age": "20.15"
+  },
+  {
+    "id": 111,
+    "name": "Room #111",
+    "count": 10,
+    "Avg_age": "32.11"
+  },
+  {
+    "id": 957,
+    "name": "Room #957",
+    "count": 9,
+    "Avg_age": "33.51"
+  },
+  {
+    "id": 773,
+    "name": "Room #773",
+    "count": 11,
+    "Avg_age": "35.55"
+  }
+]

@@ -4,7 +4,7 @@ import os
 import json
 from lxml import etree
 import argparse
-
+import logging
 
 def connect_db():
     load_dotenv()
@@ -16,16 +16,16 @@ def connect_db():
         password = os.getenv("PG_PASSWORD")
     )
     cur = conn.cursor()
-    
+    logging.info("DataBase connection is set\n")
     return conn, cur
 
 def drop_tables(conn, cur):
-    #We need it so that drop tables work 
-    conn.autocommit = True 
-
     #Clean up to start always from scratch
     cur.execute("DROP TABLE IF EXISTS students")
     cur.execute("DROP TABLE IF EXISTS rooms")
+    
+    conn.commit()
+    logging.info("Table are dropped")
 
 def create_tables(cur):
     #Create tables in DB
@@ -45,9 +45,11 @@ def create_tables(cur):
             sex CHAR(1) CHECK(sex IN ('M', 'F'))
             )  
     """)
+    logging.info("Tables 'students' and 'rooms' are created")
 
 def create_indices(cur):
     cur.execute("CREATE INDEX IF NOT EXISTS room_idx ON students(room);")
+    logging.info("Indices are created")
     
 def extract_from_json(rooms_json, students_json):
     #Write data from json to DB
@@ -61,6 +63,7 @@ def extract_from_json(rooms_json, students_json):
         
     rows_students = [[entry[k] for k in entry.keys()] for entry in students_data]
 
+    logging.info("Data is extracted from json files")
     return (rows_rooms, rows_students)
 
 def load_to_db(rows_rooms, rows_students, cur):
@@ -73,6 +76,7 @@ def load_to_db(rows_rooms, rows_students, cur):
         "INSERT INTO students (birthday, id, name, room, sex) VALUES (%s, %s, %s, %s, %s)",
         rows_students
     )
+    logging.info("Data is loaded into DB")
    
 def extract_from_db(cur, query):
     cur.execute(query)
@@ -80,12 +84,21 @@ def extract_from_db(cur, query):
     rows = cur.fetchall()
     return [dict(zip(cols, row)) for row in rows]
 
-def load_to_json(data, filename, ouput_folder):
+def load_to_json(data, filename, ouput_folder, rewrite_ouput):
     filepath = f"{ouput_folder}/{filename}.json"
+    if (os.path.exists(filepath) and not rewrite_ouput):
+        logging.info(f"File {filepath} was not rewritten")
+        return
     with open(filepath, "w") as f:
         json.dump(data, f, indent=2, default=str)
+    logging.info("Data is loaded into JSON: {filepath}")
 
-def load_to_xml(data, filename,ouput_folder, record_tag):
+def load_to_xml(data, filename,ouput_folder, record_tag, rewrite_ouput):
+    filepath=f"{ouput_folder}/{filename}.xml"
+    if (os.path.exists(filepath) and not rewrite_ouput):
+        logging.info(f"File {filepath} was not rewritten")
+        return
+    
     root = etree.Element(f"_{filename}")
     
     for item in data:
@@ -95,13 +108,15 @@ def load_to_xml(data, filename,ouput_folder, record_tag):
             child.text = str(value)
     
     tree = etree.ElementTree(root)
-    filepath=f"{ouput_folder}/{filename}.xml"
+    
     tree.write(
         filepath,
         pretty_print=True,
         xml_declaration=True,
         encoding="UTF-8"
     )
+    
+    logging.info(f"Data is loaded into XML: {filepath}")
 
 def get_queries(folder_path):
     queries = {}
@@ -114,12 +129,15 @@ def get_queries(folder_path):
     return queries  
 
 def fill_db(conn, cur,rooms_path, student_path):
+    logging.info("=== Inserting data into DB phase ===")
     drop_tables(conn, cur)
     create_tables(cur)
     rows_rooms, rows_students = extract_from_json(rooms_path, student_path)
     load_to_db(rows_rooms, rows_students, cur)
+    logging.info("=== DataBase if is filled ===\n")
     
-def query_db(cur, queries_folder, format, ouput_folder, record_teg_xml):
+def query_db(cur, queries_folder, format, ouput_folder, record_teg_xml, rewrite_ouput=True):
+    logging.info("=== Quering DB phase ===")
     #Create indices 
     create_indices(cur)
     
@@ -132,13 +150,13 @@ def query_db(cur, queries_folder, format, ouput_folder, record_teg_xml):
     for name, sql in queries.items():
         data = extract_from_db(cur, sql)
         if format=="json":
-            load_to_json(data, name, ouput_folder)
-            print(f"Loaded data to {ouput_folder}/{name}.json")
+            load_to_json(data, name, ouput_folder, rewrite_ouput)
         else:
-            load_to_xml(data, name, ouput_folder, record_teg_xml)
-            print(f"Loaded data to {ouput_folder}/{name}.xml")
+            load_to_xml(data, name, ouput_folder, record_teg_xml, rewrite_ouput)
+    
+    logging.info("=== Results of queriing DB are saved ===\n")
        
-def main():
+def parse_cli():
     #CLI
     parser = argparse.ArgumentParser()
     
@@ -148,24 +166,28 @@ def main():
     parser.add_argument("--queries_folder", required=True)
     parser.add_argument("--output_folder", required=True)
     parser.add_argument("--record_teg_xml", default="record")
+    parser.add_argument("--allow_rewrite", choices=["yes", "no"], default="yes")
     
-    args = parser.parse_args()
+    return parser.parse_args()
     
-    student_path = args.students
-    rooms_path = args.rooms
-    format = args.format
-    queries_folder = args.queries_folder
-    ouput_folder = args.output_folder
-    record_teg_xml = args.record_teg_xml
-    
+def main():
+    logging.basicConfig(level=logging.INFO)
+    args = parse_cli()
+      
     #Set connection to DB
     conn, cur = connect_db()
-    
+
     #Create tables and load data from json to them
-    fill_db(conn, cur, rooms_path, student_path)
+    fill_db(conn, cur, args.rooms, args.students)
 
     #Query DB and and save results
-    query_db(cur, queries_folder, format, ouput_folder, record_teg_xml)
+    query_db(cur, 
+            args.queries_folder, 
+            args.format, 
+            args.output_folder, 
+            args.record_teg_xml,
+            args.allow_rewrite == "yes"
+    )
     
     #Close connection to DB
     cur.close()

@@ -1,4 +1,24 @@
 # README
+## Installation
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/raijinstorm/pyt-6438_task1.git
+   cd pyt-6438_task1
+   ```
+2. Create a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate 
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Run the script:
+   ```bash
+   python3 query_db.py --students data/students.json --rooms data/rooms.json --format json
+   ```
+
 
 ## Условие задачи
 С использованием базы MySQL (или другая реляционная БД, например, PostgreSQL) создать схему данных соответствующую файлам во вложении (связь многие к одному)

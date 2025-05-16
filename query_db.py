@@ -3,8 +3,64 @@ from dotenv import load_dotenv
 import os
 import json
 from lxml import etree
+import argparse
 
-def extract(cur, query):
+def drop_tables(conn, cur):
+    #We need it so that drop tables work 
+    conn.autocommit = True 
+
+    #Clean up to start always from scratch
+    cur.execute("DROP TABLE IF EXISTS students")
+    cur.execute("DROP TABLE IF EXISTS rooms")
+
+def create_tables(cur):
+    #Create tables in DB
+    cur.execute("""
+            CREATE TABLE IF NOT EXISTS rooms (
+            id INTEGER PRIMARY KEY,
+            name VARCHAR(20) NOT NULL
+            )  
+    """)
+
+    cur.execute("""
+            CREATE TABLE IF NOT EXISTS students (
+            id INTEGER PRIMARY KEY,
+            birthday DATE NOT NULL,
+            name VARCHAR(30) NOT NULL,
+            room INTEGER REFERENCES rooms(id),
+            sex CHAR(1) CHECK(sex IN ('M', 'F'))
+            )  
+    """)
+
+def create_indices(cur):
+    cur.execute("CREATE INDEX IF NOT EXISTS room_idx ON students(room);")
+    
+def extract_from_json(rooms_json, students_json):
+    #Write data from json to DB
+    with open(rooms_json, "r") as f:
+        rooms_data = json.load(f)
+        
+    rows_rooms = [[entry[k] for k in entry.keys()] for entry in rooms_data]
+
+    with open(students_json, "r") as f:
+        students_data = json.load(f)
+        
+    rows_students = [[entry[k] for k in entry.keys()] for entry in students_data]
+
+    return (rows_rooms, rows_students)
+
+def load_to_db(rows_rooms, rows_students, cur):
+    cur.executemany(
+        "INSERT INTO rooms (id, name) VALUES (%s, %s)",
+        rows_rooms
+    )
+
+    cur.executemany(
+        "INSERT INTO students (birthday, id, name, room, sex) VALUES (%s, %s, %s, %s, %s)",
+        rows_students
+    )
+   
+def extract_from_db(cur, query):
     cur.execute(query)
     cols = [d[0] for d in cur.description]
     rows = cur.fetchall()
@@ -44,8 +100,21 @@ def get_queries(folder_path):
     return queries  
 
 def main():
+    #CLI
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument("--students", required=True)
+    parser.add_argument("--rooms", required=True)
+    parser.add_argument("--format", required=True, choices=["json", "xml"])
+    
+    args = parser.parse_args()
+    
+    student_path = args.students
+    rooms_path = args.rooms
+    format = args.format
+    
+    #Set connection to DB
     load_dotenv()
-
     conn = psycopg2.connect(
         host = os.getenv("PG_HOST"),
         port = os.getenv("PG_PORT"),
@@ -53,24 +122,33 @@ def main():
         user = os.getenv("PG_USER"),
         password = os.getenv("PG_PASSWORD")
     )
-
     cur = conn.cursor()
     
+    #Create tables and load data from json to them
+    # drop_tables(conn, cur)
+    # create_tables(cur)
+    # rows_rooms, rows_students = extract_from_json(rooms_path, student_path)
+    # load_to_db(rows_rooms, rows_students, cur)
+
+    #Create indices 
+    create_indices(cur)
+    
+    #get a list of queries 
     queries = get_queries("queries")
 
+    #Load resulsts of queires into json / xml
     os.makedirs("output", exist_ok=True)
     
-    is_json = False
-    
     for name, sql in queries.items():
-        data = extract(cur, sql)
-        if is_json:
+        data = extract_from_db(cur, sql)
+        if format=="json":
             load_to_json(data, name)
             print(f"Loaded data to output/{name}.json")
         else:
-            load_to_xml(data, name, "record_r")
+            load_to_xml(data, name, "record")
             print(f"Loaded data to output/{name}.xml")
     
+    #Close connection to DB
     cur.close()
     conn.close()
     

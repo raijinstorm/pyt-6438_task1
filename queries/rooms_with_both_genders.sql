@@ -1,4 +1,4 @@
-SELECT r.id, r.name, COUNT(*)
+SELECT r.id, r.name
 FROM students AS s 
 JOIN rooms AS r 
     ON s.room = r.id  

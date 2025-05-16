@@ -16,7 +16,7 @@
    ```
 4. Run the script:
    ```bash
-   python3 query_db.py --students data/students.json --rooms data/rooms.json --format xml --queries_folder queries --output_folder output --record_teg_xml element
+   python3 query_db.py --students data/students.json --rooms data/rooms.json --format xml --queries_folder queries --output_folder output --record_teg_xml element --allow_rewrite yes
    ```
 
 

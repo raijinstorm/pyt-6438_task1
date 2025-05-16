@@ -125,10 +125,10 @@ def main():
     cur = conn.cursor()
     
     #Create tables and load data from json to them
-    # drop_tables(conn, cur)
-    # create_tables(cur)
-    # rows_rooms, rows_students = extract_from_json(rooms_path, student_path)
-    # load_to_db(rows_rooms, rows_students, cur)
+    drop_tables(conn, cur)
+    create_tables(cur)
+    rows_rooms, rows_students = extract_from_json(rooms_path, student_path)
+    load_to_db(rows_rooms, rows_students, cur)
 
     #Create indices 
     create_indices(cur)

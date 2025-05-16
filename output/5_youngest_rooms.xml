@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<_5_youngest_rooms>
+  <record_r>
+    <id>661</id>
+    <name>Room #661</name>
+    <count>3</count>
+    <Avg_age>12.19</Avg_age>
+  </record_r>
+  <record_r>
+    <id>913</id>
+    <name>Room #913</name>
+    <count>3</count>
+    <Avg_age>20.15</Avg_age>
+  </record_r>
+  <record_r>
+    <id>111</id>
+    <name>Room #111</name>
+    <count>10</count>
+    <Avg_age>32.11</Avg_age>
+  </record_r>
+  <record_r>
+    <id>957</id>
+    <name>Room #957</name>
+    <count>9</count>
+    <Avg_age>33.51</Avg_age>
+  </record_r>
+  <record_r>
+    <id>773</id>
+    <name>Room #773</name>
+    <count>11</count>
+    <Avg_age>35.55</Avg_age>
+  </record_r>
+</_5_youngest_rooms>

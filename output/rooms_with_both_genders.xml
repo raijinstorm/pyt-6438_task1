@@ -1,39 +1,39 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <_rooms_with_both_genders>
-  <record>
+  <element>
     <id>222</id>
     <name>Room #222</name>
-  </record>
-  <record>
+  </element>
+  <element>
     <id>419</id>
     <name>Room #419</name>
-  </record>
-  <record>
+  </element>
+  <element>
     <id>396</id>
     <name>Room #396</name>
-  </record>
-  <record>
+  </element>
+  <element>
     <id>6</id>
     <name>Room #6</name>
-  </record>
-  <record>
+  </element>
+  <element>
     <id>623</id>
     <name>Room #623</name>
-  </record>
-  <record>
+  </element>
+  <element>
     <id>736</id>
     <name>Room #736</name>
-  </record>
-  <record>
+  </element>
+  <element>
     <id>484</id>
     <name>Room #484</name>
-  </record>
-  <record>
+  </element>
+  <element>
     <id>579</id>
     <name>Room #579</name>
-  </record>
-  <record>
+  </element>
+  <element>
     <id>221</id>
     <name>Room #221</name>
-  </record>
+  </element>
 </_rooms_with_both_genders>

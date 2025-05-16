@@ -80,12 +80,12 @@ def extract_from_db(cur, query):
     rows = cur.fetchall()
     return [dict(zip(cols, row)) for row in rows]
 
-def load_to_json(data, filename):
-    filepath = f"output/{filename}.json"
+def load_to_json(data, filename, ouput_folder):
+    filepath = f"{ouput_folder}/{filename}.json"
     with open(filepath, "w") as f:
         json.dump(data, f, indent=2, default=str)
 
-def load_to_xml(data, filename, record_tag):
+def load_to_xml(data, filename,ouput_folder, record_tag):
     root = etree.Element(f"_{filename}")
     
     for item in data:
@@ -95,7 +95,7 @@ def load_to_xml(data, filename, record_tag):
             child.text = str(value)
     
     tree = etree.ElementTree(root)
-    filepath=f"output/{filename}.xml"
+    filepath=f"{ouput_folder}/{filename}.xml"
     tree.write(
         filepath,
         pretty_print=True,
@@ -119,24 +119,24 @@ def fill_db(conn, cur,rooms_path, student_path):
     rows_rooms, rows_students = extract_from_json(rooms_path, student_path)
     load_to_db(rows_rooms, rows_students, cur)
     
-def query_db(cur, format):
+def query_db(cur, queries_folder, format, ouput_folder, record_teg_xml):
     #Create indices 
     create_indices(cur)
     
     #get a list of queries 
-    queries = get_queries("queries")
+    queries = get_queries(queries_folder)
 
     #Load resulsts of queires into json / xml
-    os.makedirs("output", exist_ok=True)
+    os.makedirs(ouput_folder, exist_ok=True)
     
     for name, sql in queries.items():
         data = extract_from_db(cur, sql)
         if format=="json":
-            load_to_json(data, name)
-            print(f"Loaded data to output/{name}.json")
+            load_to_json(data, name, ouput_folder)
+            print(f"Loaded data to {ouput_folder}/{name}.json")
         else:
-            load_to_xml(data, name, "record")
-            print(f"Loaded data to output/{name}.xml")
+            load_to_xml(data, name, ouput_folder, record_teg_xml)
+            print(f"Loaded data to {ouput_folder}/{name}.xml")
        
 def main():
     #CLI
@@ -145,12 +145,18 @@ def main():
     parser.add_argument("--students", required=True)
     parser.add_argument("--rooms", required=True)
     parser.add_argument("--format", required=True, choices=["json", "xml"])
+    parser.add_argument("--queries_folder", required=True)
+    parser.add_argument("--output_folder", required=True)
+    parser.add_argument("--record_teg_xml", default="record")
     
     args = parser.parse_args()
     
     student_path = args.students
     rooms_path = args.rooms
     format = args.format
+    queries_folder = args.queries_folder
+    ouput_folder = args.output_folder
+    record_teg_xml = args.record_teg_xml
     
     #Set connection to DB
     conn, cur = connect_db()
@@ -159,7 +165,7 @@ def main():
     fill_db(conn, cur, rooms_path, student_path)
 
     #Query DB and and save results
-    query_db(cur, format)
+    query_db(cur, queries_folder, format, ouput_folder, record_teg_xml)
     
     #Close connection to DB
     cur.close()

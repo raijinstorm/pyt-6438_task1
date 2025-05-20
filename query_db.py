@@ -6,6 +6,26 @@ from lxml import etree
 import argparse
 import logging
 from typing import Tuple, List, Dict, Any
+from pydantic import BaseModel, field_validator, ValidationError
+
+
+class Room(BaseModel):
+    id: int
+    name: str
+
+
+class Student(BaseModel):
+    id: int
+    birthday: str
+    name: str
+    room: int
+    sex: str
+
+    @field_validator("sex")
+    def m_or_f(cls, value):
+        if value not in ("M", "F"):
+            raise ValueError("Sex must be 'M' or 'F'")
+        return value
 
 
 def connect_db() -> Tuple[psycopg2.extensions.connection, psycopg2.extensions.cursor]:
@@ -125,11 +145,38 @@ def load_to_db(
        rows_rooms : List of lists contating extracted rooms data.
        rows_students : List of lists contating extracted rstudents data.
     """
-    cur.executemany("INSERT INTO rooms (id, name) VALUES (%s, %s)", rows_rooms)
+
+    validated_rows_rooms = []
+    for row in rows_rooms:
+        try:
+            Room(id=row[0], name=row[1])
+        except ValidationError as e:
+            logging.warning("Skipping invalid room %r: %s", row, e)
+            continue
+        validated_rows_rooms.append(row)
+
+    cur.executemany(
+        "INSERT INTO rooms (id, name) VALUES (%s, %s)", validated_rows_rooms
+    )
+
+    validated_rows_students = []
+    for row in rows_students:
+        try:
+            Student(
+                id=row[1],
+                birthday=row[0],
+                name=row[2],
+                room=row[3],
+                sex=row[4],
+            )
+        except ValidationError as e:
+            logging.warning("Skipping invalid student %r: %s , %s, %r, %s", row, e)
+            continue
+        validated_rows_students.append(row)
 
     cur.executemany(
         "INSERT INTO students (birthday, id, name, room, sex) VALUES (%s, %s, %s, %s, %s)",
-        rows_students,
+        validated_rows_students,
     )
     logging.info("Data is loaded into DB")
 
@@ -149,8 +196,10 @@ def extract_from_db(
     """
     cur.execute(query)
     if cur.description is None:
-        raise ValueError("Cursor descritpiton is none. Query might not returned columns!")
-    
+        raise ValueError(
+            "Cursor descritpiton is none. Query might not returned columns!"
+        )
+
     cols = [d[0] for d in cur.description]
     rows = cur.fetchall()
     return [dict(zip(cols, row)) for row in rows]
